@@ -34,6 +34,10 @@ import Graphics.Gnuplot.Simple
 import Control.Monad
 import System.Environment
 import Text.Parsec
+import qualified Graphics.Gnuplot.Advanced as GP
+import qualified Graphics.Gnuplot.Terminal.WXT as WXT
+import qualified Graphics.Gnuplot.Terminal.PNG as PNG
+
 
 main :: IO ()
 main = do
@@ -46,7 +50,10 @@ main = do
           str <- readFile fpO
           case runParser offP defParStat fpO str of
             Left  e -> print e
-            Right o -> plotOFF [PNG fpP] [CornersToColor Mean] (o :: OFF Float Int)
+            Right o -> do
+              print o
+              print $ toMesh o
+              GP.plotDefault (off3D (o :: OFF Float Int)) >>= print
         real str =
           let ext = takeWhile (/='.') $ reverse str
           in if ext == "ffo"
