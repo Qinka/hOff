@@ -31,6 +31,7 @@ The types are used in parser.
 
 module HOff.Parser
   ( offP
+  , defParStat
   , module HOff.Parser.Types
   )where
 
@@ -112,7 +113,7 @@ readNumP :: (Read a, Num a, Stream s m Char)
       => ParsecT s u m a
 readNumP = do
   spaces
-  read <$> many1 hexDigit
+  read <$> many1 (hexDigit <|> oneOf "+-.")
 
 
 -- | parser the OFF file
