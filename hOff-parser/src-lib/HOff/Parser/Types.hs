@@ -57,6 +57,10 @@ data OFF a b = OFF [Vertice a] [Face b]
 data Vertice a = Vertice (a,a,a)
                deriving (Eq,Show)
 
+instance Ord a => Ord (Vertice a) where
+  compare (Vertice (a,b,c)) (Vertice (x,y,z)) =
+    compare (maximum [a,b,c]) (maximum [x,y,z])
+  
 -- | Face of OFF store the index of every vertices.
 --   l is vector should be @* -> *@, and it will be used as array, or say vector.
 --   a is type of value

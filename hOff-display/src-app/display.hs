@@ -30,13 +30,12 @@ module Main where
 
 import HOff.Parser
 import HOff.Display
-import Graphics.Gnuplot.Simple
 import Control.Monad
 import System.Environment
 import Text.Parsec
-import qualified Graphics.Gnuplot.Advanced as GP
-import qualified Graphics.Gnuplot.Terminal.WXT as WXT
-import qualified Graphics.Gnuplot.Terminal.PNG as PNG
+import Graphics.Rendering.OpenGL as GL
+import Graphics.UI.GLFW as GLFW
+import Graphics.Rendering.OpenGL (($=))
 
 
 main :: IO ()
@@ -50,12 +49,82 @@ main = do
           str <- readFile fpO
           case runParser offP defParStat fpO str of
             Left  e -> print e
-            Right o -> do
-              print o
-              print $ toMesh o
-              GP.plotDefault (off3D (o :: OFF Float Int)) >>= print
+            Right o -> display $ normOFF o
         real str =
           let ext = takeWhile (/='.') $ reverse str
           in if ext == "ffo"
              then reverse $ dropWhile (=='.') $ dropWhile (/='.') $ reverse str
              else str
+
+
+
+color3 :: GLfloat -> GLfloat -> GLfloat -> GL.Color3 GLfloat
+color3 = GL.Color3
+
+display :: OFF Float Int -> IO ()
+display o@(OFF ps fs) = do
+  GLFW.initialize
+  -- open window
+  GLFW.openWindow (GL.Size 400 400) [GLFW.DisplayAlphaBits 8] GLFW.Window
+  GLFW.windowTitle $= "hOff Display"
+
+  GL.shadeModel    $= GL.Smooth
+  -- enable antialiasing
+  GL.lineSmooth $= GL.Enabled
+  GL.blend      $= GL.Enabled
+  GL.blendFunc  $= (GL.SrcAlpha, GL.OneMinusSrcAlpha)
+  GL.lineWidth  $= 1.5
+  
+  -- set the color to clear background
+  GL.clearColor $= Color4 1 1 1 0
+ 
+  -- OpenGL Viewport.
+  GLFW.windowSizeCallback $= \ size@(GL.Size w h) -> 
+    GL.viewport   $= (GL.Position 0 0, size)
+  -- Draw loop
+  drawLoop o
+
+  -- finish up
+  GLFW.closeWindow
+  GLFW.terminate
+
+
+drawLoop o = do
+  wO <- getParam Opened
+  esc <- GLFW.getKey GLFW.ESC
+  when ( esc /= GLFW.Press && wO) $ do
+    GLFW.pollEvents
+
+
+    GL.clear [GL.ColorBuffer]
+    drawOFF o
+
+    up    <- GLFW.getKey 'W'
+    down  <- GLFW.getKey 'S'
+    left  <- GLFW.getKey 'A'
+    right <- GLFW.getKey 'D'
+    zL    <- GLFW.getKey 'Q'
+    zR    <- GLFW.getKey 'E'
+
+    when (up    == GLFW.Press) $ GL.rotate ( 10 :: Double) (Vector3 1 0 0)
+    when (down  == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 1 0 0)
+    when (left  == GLFW.Press) $ GL.rotate ( 10 :: Double) (Vector3 0 1 0)
+    when (right == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 0 1 0)
+    when (zL    == GLFW.Press) $ GL.rotate ( 10 :: Double) (Vector3 0 0 1)
+    when (zR    == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 0 0 1)
+  
+    GLFW.swapBuffers
+    GLFW.sleep 0.1
+  
+    drawLoop o
+
+v3 a b c = Vertex3 a b c :: Vertex3 Float
+
+normOFF :: (Ord a, Floating a)
+        => OFF a b
+        -> OFF a b
+normOFF (OFF ps fs) =
+  let Vertice (a,b,c) = maximum ps
+      m = maximum [a,b,c] * 2
+      ps' = map (\(Vertice (x,y,z)) -> (Vertice (x/m,y/m,z/m))) ps
+  in OFF ps' fs
