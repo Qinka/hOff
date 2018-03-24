@@ -74,12 +74,16 @@ display o@(OFF ps fs) = do
   GL.blend      $= GL.Enabled
   GL.blendFunc  $= (GL.SrcAlpha, GL.OneMinusSrcAlpha)
   GL.lineWidth  $= 1.5
-  
+
+  -- depth
+  GL.depthClamp $= Enabled
+  GL.depthFunc  $= Just GL.Lequal
+
   -- set the color to clear background
   GL.clearColor $= Color4 1 1 1 0
- 
+
   -- OpenGL Viewport.
-  GLFW.windowSizeCallback $= \ size@(GL.Size w h) -> 
+  GLFW.windowSizeCallback $= \ size@(GL.Size w h) ->
     GL.viewport   $= (GL.Position 0 0, size)
   -- Draw loop
   drawLoop o
@@ -112,10 +116,10 @@ drawLoop o = do
     when (right == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 0 1 0)
     when (zL    == GLFW.Press) $ GL.rotate ( 10 :: Double) (Vector3 0 0 1)
     when (zR    == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 0 0 1)
-  
+
     GLFW.swapBuffers
     GLFW.sleep 0.1
-  
+
     drawLoop o
 
 v3 a b c = Vertex3 a b c :: Vertex3 Float
