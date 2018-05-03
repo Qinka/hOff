@@ -28,14 +28,14 @@ Portability:  unknown
 
 module Main where
 
-import HOff.Parser
-import HOff.Display
-import Control.Monad
-import System.Environment
-import Text.Parsec
-import Graphics.Rendering.OpenGL as GL
-import Graphics.UI.GLFW as GLFW
-import Graphics.Rendering.OpenGL (($=))
+import           Control.Monad
+import           Graphics.Rendering.OpenGL as GL
+import           Graphics.Rendering.OpenGL (($=))
+import           Graphics.UI.GLFW          as GLFW
+import           HOff.Display
+import           HOff.Parser
+import           System.Environment
+import           Text.Parsec
 
 
 main :: IO ()
@@ -49,7 +49,7 @@ main = do
           str <- readFile fpO
           case runParser offP defParStat fpO str of
             Left  e -> print e
-            Right o -> display $ normOFF o
+            Right o -> display o
         real str =
           let ext = takeWhile (/='.') $ reverse str
           in if ext == "ffo"
@@ -65,7 +65,7 @@ display :: OFF Float Int -> IO ()
 display o@(OFF ps fs) = do
   GLFW.initialize
   -- open window
-  GLFW.openWindow (GL.Size 400 400) [GLFW.DisplayAlphaBits 8] GLFW.Window
+  GLFW.openWindow (GL.Size 400 400) [DisplayAlphaBits 8,DisplayDepthBits 32] GLFW.Window
   GLFW.windowTitle $= "hOff Display"
 
   GL.shadeModel    $= GL.Smooth
@@ -76,8 +76,10 @@ display o@(OFF ps fs) = do
   GL.lineWidth  $= 1.5
 
   -- depth
-  GL.depthClamp $= Enabled
-  GL.depthFunc  $= Just GL.Lequal
+  GL.depthClamp  $= Enabled
+  GL.depthFunc   $= Just GL.Less
+  -- GL.depthRange $= Just (0,1)
+  -- GL.blend       $= Enable
 
   -- set the color to clear background
   GL.clearColor $= Color4 1 1 1 0
@@ -86,22 +88,21 @@ display o@(OFF ps fs) = do
   GLFW.windowSizeCallback $= \ size@(GL.Size w h) ->
     GL.viewport   $= (GL.Position 0 0, size)
   -- Draw loop
-  drawLoop o
+  drawLoop $ transOFF o
 
   -- finish up
   GLFW.closeWindow
   GLFW.terminate
 
 
-drawLoop o = do
+drawLoop o@(ps,cs) = do
   wO <- getParam Opened
   esc <- GLFW.getKey GLFW.ESC
   when ( esc /= GLFW.Press && wO) $ do
     GLFW.pollEvents
+    GL.clear [GL.ColorBuffer, GL.DepthBuffer]
 
-
-    GL.clear [GL.ColorBuffer]
-    drawOFF o
+    drawMesh ps cs
 
     up    <- GLFW.getKey 'W'
     down  <- GLFW.getKey 'S'
@@ -109,6 +110,8 @@ drawLoop o = do
     right <- GLFW.getKey 'D'
     zL    <- GLFW.getKey 'Q'
     zR    <- GLFW.getKey 'E'
+    zO    <- GLFW.getKey '='
+    zI    <- GLFW.getKey '-'
 
     when (up    == GLFW.Press) $ GL.rotate ( 10 :: Double) (Vector3 1 0 0)
     when (down  == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 1 0 0)
@@ -116,6 +119,11 @@ drawLoop o = do
     when (right == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 0 1 0)
     when (zL    == GLFW.Press) $ GL.rotate ( 10 :: Double) (Vector3 0 0 1)
     when (zR    == GLFW.Press) $ GL.rotate (-10 :: Double) (Vector3 0 0 1)
+    when (zO    == GLFW.Press) $ GL.scale 1.1 1.1 (1.1 :: Double)
+    when (zI    == GLFW.Press) $ GL.scale 0.9 0.9 (0.9 :: Double)
+
+    GL.flush
+    GL.finish
 
     GLFW.swapBuffers
     GLFW.sleep 0.1
